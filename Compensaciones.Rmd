@@ -1,18 +1,88 @@
 ---
-title: "R Notebook"
+title: "Mapa de compensación económica mensual"
 output: html_notebook
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+```{r}
+library(sf)
+library(ggplot2)
+library(ggpubr)
+library(tidyverse)
+library(ggrepel)
+library(repr)
+library(rjson)
+library(rio)
+library(plotly)
+library(stringr)
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+compensaciones = import("https://github.com/PULSO-PUCP/ERM_2022/raw/main/cuadro_compensacion_alcaldes2020.xlsx")
+colnames(compensaciones)=compensaciones[1,]
+colnames(compensaciones)[9]="Compensacion"
+
+compensaciones$Municipalidad= str_extract(compensaciones$Municipalidad,"PROVINCIAL") 
+
+ubigeos <- read_csv("https://cloud.minsa.gob.pe/s/GkfcJD8xKHJeCqn/download")
+
+mapaD = st_read("C:/Users/soyma/Documents/GitHub/ERM_2022/LIMITE_DISTRITAL_2020_INEI_geogpsperu_juansuyo_931381206.shp") #cambiar según directorio
+
+mapaP = st_read("C:/Users/soyma/Documents/GitHub/ERM_2022/PROVINCIAS.shp") #cambiar según directorio
+
+head(mapaP)
+```
+Compensaciones recuperadas de: https://www.mef.gob.pe/contenidos/rec_publicos/documentos/cuadro_compensacion_alcaldes2020.pdf
 
 ```{r}
-plot(cars)
+compensaciones = merge(compensaciones, ubigeos, by.x= "Ubigeo RENIEC", by.y= "ubigeo_reniec")
+
+compensacionesP = compensaciones %>% filter(Municipalidad == "PROVINCIAL")
+
+#compensacionesP$provincia_inei= str_sub(compensacionesP$provincia_inei,1,4) 
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+```{r}
+#mapa$UBIGEO=as.numeric(mapa$UBIGEO)
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+mapadist = merge(mapaD, compensaciones, by.x= "UBIGEO", by.y="ubigeo_inei")
 
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+mapaprov = merge(mapaP, compensacionesP, by.x= "IDPROV", by.y="provincia_inei")
+```
+
+```{r}
+base = ggplot(data = mapadist) + theme_light()
+```
+
+```{r}
+library(viridis)
+mapaCompensaciones = base +
+  geom_sf(aes(fill= Compensacion), size = 0.001) + labs(fill = "Soles (S/)")  + 
+  #geom_sf(data = mapaprov,fill = NA, size = 1)+
+  scale_fill_viridis(discrete = TRUE) +
+  ggtitle("Nivel distrital")
+
+
+mapaCompensaciones
+```
+
+```{r}
+base1 = ggplot(data = mapaprov) + theme_light()
+```
+
+```{r}
+library(viridis)
+mapaCompensacionesP = base1 +
+  geom_sf(aes(fill= Compensacion), size = 0.005) + labs(fill = "Soles (S/)")+ 
+  scale_fill_viridis(discrete = TRUE, option= "viridis") +
+  ggtitle("Nivel provincial")
+
+
+mapaCompensacionesP
+```
+
+```{r}
+annotate_figure(ggarrange(mapaCompensaciones, mapaCompensacionesP, ncol=2, nrow=1, common.legend = TRUE, legend="right"), top = text_grob("Compensación económica mensual (2019- 2022)", face = "bold", size = 14))
+```
+
+```{r}
+ggsave("mapasCompensaciones.png")
+```
+
