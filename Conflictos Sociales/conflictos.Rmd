@@ -1,0 +1,32 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(rio)
+
+conflictos = import("https://github.com/PULSO-PUCP/ERM_2022/raw/main/Reporte-Mensual-de-Conflictos-Sociales_1.xlsx")
+```
+
+```{r}
+conflictos$Descripcion = ifelse(conflictos$Column3 == "NA", conflictos$Column4, conflictos$Column3)
+```
+
+```{r}
+library(stringr)
+
+conflictos$ubicacion = str_extract_all(conflictos$Column1, "Ubicación.*")
+```
+
+```{r}
+conflictos =  conflictos[!is.na(conflictos$ubicacion),]
+conflictos =  conflictos[ conflictos$ubicacion != "character(0)",]
+```
+
+```{r}
+conflictos= conflictos[,c(1,7,8)]
+
+```
+
+
