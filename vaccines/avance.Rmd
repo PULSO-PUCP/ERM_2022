@@ -71,6 +71,11 @@ library(lubridate)
 Vacuna=subset(vacunas_covid,dosis==2 | dosis==3)
 
 VacunaCompleta = Vacuna[!duplicated(Vacuna$id_persona),]
+  #group_by(id_persona) %>% 
+  #filter(dosis == max(dosis)) %>% 
+  #distinct
+
+#
 
 VacunaCompleta$fecha_vacunacion1 <- ymd(VacunaCompleta$fecha_vacunacion)
 
@@ -102,5 +107,50 @@ BaseProv$Avance=BaseProv$Nro/BaseProv$Poblacion18*100
 ```
 
 ```{r}
-write.csv(BaseDistrital2,"BaseDistrital.csv")
+library(sf)
+library(ggplot2)
+library(ggpubr)
+
+mapaP = st_read("C:/Users/soyma/Documents/GitHub/ERM_2022/PROVINCIAS.shp") #cambiar según directorio
+
+mapaprov = merge(mapaP, BaseProv, by.x= "IDPROV", by.y="provincia_inei")
 ```
+
+```{r}
+base1 = ggplot(data = mapaprov) + theme_light()
+```
+
+```{r}
+BaseProv$Categorias = cut(BaseProv$Avance, breaks = 5)
+```
+
+```{r}
+summary(BaseProv$Categorias)
+```
+
+```{r}
+library(viridis)
+mapaVacunacion = base1 +
+  geom_sf(aes(fill= cut(Avance, breaks = 5)), size = 0.005) + 
+  labs(fill = "Porcentaje (%)")+ 
+  scale_fill_viridis(discrete = TRUE, option= "rocket") +
+  ggtitle("Avance de la vacunación a nivel provincial")
+
+
+mapaVacunacion
+```
+
+```{r}
+ggsave("vacunacionprovincial.png")
+```
+
+```{r}
+write.csv(BaseProv,"BaseProv.csv")
+```
+
+```{r}
+BaseProv <- read.csv("BaseProv.csv")
+```
+
+
+
